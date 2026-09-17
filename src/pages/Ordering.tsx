@@ -4,7 +4,7 @@ import { db, id } from "../lib/store";
 import { formatRupiah } from "../lib/format";
 import {
   MIN_ORDER_TONS,
-  SAWITPRO_LOCO_LOCATIONS,
+  LOCO_LOCATIONS,
   SKU_CATALOGUE,
   TON_STEP,
   pricePerKgForTons,
@@ -21,7 +21,7 @@ export default function Ordering() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [deliveryTerm, setDeliveryTerm] = useState<DeliveryTerm>("loco");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [locoLocation, setLocoLocation] = useState(SAWITPRO_LOCO_LOCATIONS[0]);
+  const [locoLocation, setLocoLocation] = useState(LOCO_LOCATIONS[0]);
   const [confirmedOrder, setConfirmedOrder] = useState<{ id: string; total: number } | null>(null);
 
   const priceTier = customer?.priceTier ?? "Retail";
@@ -162,9 +162,9 @@ export default function Ordering() {
             </button>
           </div>
           {deliveryTerm === "loco" ? (
-            <Field label="Titik Ambil (Gudang SawitPRO)">
+            <Field label="Titik Ambil (Gudang)">
               <Select value={locoLocation} onChange={(e) => setLocoLocation(e.target.value)}>
-                {SAWITPRO_LOCO_LOCATIONS.map((loc) => (
+                {LOCO_LOCATIONS.map((loc) => (
                   <option key={loc} value={loc}>
                     {loc}
                   </option>
@@ -197,7 +197,7 @@ export default function Ordering() {
 function OrderingHeader() {
   return (
     <div className="bg-accent-500 px-4 pt-12 pb-10 text-white">
-      <div className="text-xs uppercase tracking-wide text-white/80">Sahabat SawitPRO</div>
+      <div className="text-xs uppercase tracking-wide text-white/80">Sahabat Tani</div>
       <h1 className="text-2xl font-bold">Toko Tani</h1>
       <p className="text-white/90 text-sm mt-1">Pesan pupuk langsung dari sales Anda</p>
     </div>

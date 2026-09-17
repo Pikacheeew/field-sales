@@ -34,7 +34,7 @@ export function PriceListReference() {
           ))}
         </tbody>
       </table>
-      <p className="text-[11px] text-gray-400 mt-1">Harga list SawitPRO (Rp/kg) — untuk pembanding.</p>
+      <p className="text-[11px] text-gray-400 mt-1">Harga list internal (Rp/kg) — untuk pembanding.</p>
     </div>
   );
 }

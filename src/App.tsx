@@ -9,10 +9,13 @@ import Plan from "./pages/Plan";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import Ordering from "./pages/Ordering";
+import Approvals from "./pages/Approvals";
 
 function RepShell() {
+  const { user } = useAuth();
   const location = useLocation();
   const hideNav = location.pathname.startsWith("/order");
+  const homePath = user?.role === "analyst" ? "/approvals" : "/today";
   return (
     <div className="min-h-screen bg-[#f4f7f2] pb-20">
       <Routes>
@@ -22,9 +25,10 @@ function RepShell() {
         <Route path="/plan" element={<Plan />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/approvals" element={<Approvals />} />
         <Route path="/order" element={<Ordering />} />
         <Route path="/order/:customerId" element={<Ordering />} />
-        <Route path="*" element={<Navigate to="/today" replace />} />
+        <Route path="*" element={<Navigate to={homePath} replace />} />
       </Routes>
       {!hideNav && <BottomNav />}
     </div>

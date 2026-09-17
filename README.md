@@ -1,6 +1,6 @@
-# SawitPRO Field Sales
+# Field Sales
 
-Mobile-first PWA prototype for SawitPRO's field sales team: daily check-in, offline visit
+Mobile-first PWA prototype for a fertilizer distributor's field sales team: daily check-in, offline visit
 & online engagement reporting, customer database, journey planner, funnel dashboard,
 Toko Tani bulk ordering (loco/franco), and price intelligence.
 

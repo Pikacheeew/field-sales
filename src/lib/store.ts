@@ -2,7 +2,7 @@ import type { Customer, Order, PlanEntry, PriceIntel, User, Visit } from "./type
 import { orderTotal } from "./types";
 import { seedCustomers, seedOrders, seedPlan, seedPriceIntel, seedUsers, seedVisits } from "./seed";
 
-const KEY = "sawitpro_v1";
+const KEY = "fieldsales_v1";
 
 interface DB {
   users: User[];
@@ -102,6 +102,19 @@ export const db = {
     const entry = { editedAt: new Date().toISOString(), editedBy, snapshot };
     Object.assign(v, patch, { history: [...(history ?? []), entry] });
     save(state);
+  },
+  pendingApprovals: () =>
+    load()
+      .visits.filter((v) => v.approvalStatus === "pending")
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
+  approvalHistory: () =>
+    load()
+      .visits.filter((v) => v.approvalStatus === "approved" || v.approvalStatus === "rejected")
+      .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? "")),
+  // Routes through updateVisit so the decision (and the reason behind it) lands in the same
+  // audit history as any other edit — one trail, not a second parallel log to keep in sync.
+  decideApproval: (vid: string, decision: "approved" | "rejected", reason: string, analystId: string) => {
+    db.updateVisit(vid, { approvalStatus: decision, approvalReason: reason, approvedBy: analystId, decidedAt: new Date().toISOString() }, analystId);
   },
 
   orders: () => load().orders,

@@ -4,6 +4,7 @@ import { db, id } from "../lib/store";
 import { formatRupiah, formatWIB, haversineMeters, todayKey } from "../lib/format";
 import { useGeo } from "../lib/useGeo";
 import {
+  DISCOUNT_GUARDRAIL_PCT,
   EXTERNAL_REASONS,
   INTERNAL_PICS,
   INTERNAL_REASONS,
@@ -189,11 +190,17 @@ function VisitRow({ visit, onClick }: { visit: Visit; onClick: () => void }) {
         </div>
       </div>
       {visit.outcome && (
-        <div className="mt-2">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <Chip tone={visit.outcome === "offered" ? "green" : visit.outcome === "not_offered" ? "amber" : "gray"}>
             {visit.outcome === "offered" ? "Ditawarkan" : visit.outcome === "not_offered" ? "Tidak ditawarkan" : "Pelanggan tidak ada"}
           </Chip>
+          {visit.approvalStatus === "pending" && <Chip tone="amber">Menunggu Persetujuan</Chip>}
+          {visit.approvalStatus === "approved" && <Chip tone="green">Harga Disetujui</Chip>}
+          {visit.approvalStatus === "rejected" && <Chip tone="red">Harga Ditolak</Chip>}
         </div>
+      )}
+      {visit.approvalStatus === "rejected" && visit.approvalReason && (
+        <div className="mt-1.5 text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{visit.approvalReason}</div>
       )}
       {visit.gpsFlagged && (
         <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
@@ -289,6 +296,9 @@ function VisitForm({
       ? haversineMeters(coords, { lat: customer.lat, lng: customer.lng }) > 500
       : (existing?.gpsFlagged ?? false);
     const quotedPrice = Math.round(Number(offeredPrice) || 0);
+    // A quote steeper than the guardrail needs Price Analyst sign-off before it's final; a
+    // fresh submission always resets any earlier decision (still preserved in history via updateVisit).
+    const needsApproval = outcome === "offered" && discountPct > DISCOUNT_GUARDRAIL_PCT;
 
     const fields: Partial<Visit> = {
       kind,
@@ -309,7 +319,11 @@ function VisitForm({
       internalPIC: requireRejection && rejectionType === "internal" ? internalPIC : undefined,
       meetingConclusion: conclusion,
       nextAction,
-      followUpDate: followUpDate || undefined
+      followUpDate: followUpDate || undefined,
+      approvalStatus: needsApproval ? "pending" : undefined,
+      approvalReason: undefined,
+      approvedBy: undefined,
+      decidedAt: undefined
     };
 
     if (existing) {
@@ -413,6 +427,12 @@ function VisitForm({
                 {Math.abs(discountPct)}%
               </span>
             </div>
+            {discountPct > DISCOUNT_GUARDRAIL_PCT && (
+              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-2 mt-2">
+                Diskon di atas batas {DISCOUNT_GUARDRAIL_PCT}% — laporan akan berstatus{" "}
+                <span className="font-semibold">Menunggu Persetujuan</span> Price Analyst setelah disimpan.
+              </p>
+            )}
           </Card>
         )}
 
@@ -421,7 +441,7 @@ function VisitForm({
             <Field label="Jenis Kegagalan" required>
               <Select value={rejectionType} onChange={(e) => { setRejectionType(e.target.value as RejectionType); setRejectionReasons([]); }}>
                 <option value="external">External (keputusan pasar/pelanggan)</option>
-                <option value="internal">Internal (isu dari SawitPRO)</option>
+                <option value="internal">Internal (isu dari kantor)</option>
               </Select>
             </Field>
             <Field label="Alasan" required>

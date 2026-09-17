@@ -151,6 +151,12 @@ export default function CustomerDetail() {
                       Gagal ({v.rejectionType === "external" ? "External" : "Internal"}): {v.rejectionReasons?.join(", ")}
                     </div>
                   )}
+                  {v.approvalStatus === "pending" && <Chip tone="amber">Menunggu Persetujuan Harga</Chip>}
+                  {v.approvalStatus === "rejected" && (
+                    <div className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 mt-1">
+                      Harga ditolak Price Analyst: {v.approvalReason}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>

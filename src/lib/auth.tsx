@@ -14,7 +14,7 @@ interface AuthState {
 
 const AuthCtx = createContext<AuthState | null>(null);
 
-const CHECKIN_KEY = "sawitpro_checkin_v1";
+const CHECKIN_KEY = "fieldsales_checkin_v1";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

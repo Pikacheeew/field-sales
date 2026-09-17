@@ -13,11 +13,12 @@ import type {
   VisitPurpose
 } from "./types";
 import {
+  DISCOUNT_GUARDRAIL_PCT,
   EXTERNAL_REASONS,
   INTERNAL_PICS,
   INTERNAL_REASONS,
   MIN_ORDER_TONS,
-  SAWITPRO_LOCO_LOCATIONS,
+  LOCO_LOCATIONS,
   SKU_CATALOGUE,
   TON_STEP,
   listPriceFor,
@@ -28,10 +29,12 @@ export const seedUsers: User[] = [
   { id: "rep_budi", name: "Budi Santoso", phone: "081234500001", role: "rep" },
   { id: "rep_siti", name: "Siti Rahayu", phone: "081234500002", role: "rep" },
   { id: "rep_hendra", name: "Hendra Wijaya", phone: "081234500003", role: "rep" },
-  { id: "ops_aldy", name: "Aldy (Ops Manager)", phone: "081234599999", role: "ops" }
+  { id: "ops_aldy", name: "Aldy (Regional Manager)", phone: "081234599999", role: "ops" },
+  { id: "analyst_dewi", name: "Dewi Anggraini (Price Analyst)", phone: "081234577777", role: "analyst" }
 ];
 
 const REP_IDS = seedUsers.filter((u) => u.role === "rep").map((u) => u.id);
+const ANALYST_ID = seedUsers.find((u) => u.role === "analyst")!.id;
 
 const KAB = ["Kampar", "Rokan Hulu", "Siak", "Pelalawan"];
 const KEC = ["Bangkinang", "Tapung", "Minas", "Kerinci Kanan", "Ujungbatu"];
@@ -129,6 +132,18 @@ const NEXT_ACTIONS = ["Kirim penawaran tertulis", "Follow-up telepon", "Kirim sa
 const VISIT_PURPOSES: VisitPurpose[] = ["prospecting", "routine", "follow_up", "complaint"];
 const COMPETITORS = ["Petro Sejahtera", "Meroke Tetap Jaya", "Pupuk Nusantara", "Sinar Tani", "Agro Makmur Bersama"];
 
+// Styled after the real internal "REJECTED Reason: ... Please sell at X/kg" rejection log —
+// an analyst's reason is almost always a counter-price plus the commercial reason for it.
+function analystRejectionReason(listPrice: number): string {
+  const counter = Math.round(listPrice * (0.97 + Math.random() * 0.02));
+  return rand([
+    `Di bawah COGS. Silakan jual di Rp${counter.toLocaleString("id-ID")}/kg.`,
+    `Sudah ada order sebelumnya di harga lebih tinggi untuk wilayah ini — samakan ke Rp${counter.toLocaleString("id-ID")}/kg.`,
+    `Margin terlalu tipis untuk kuantitas ini. Maksimal diskon ${DISCOUNT_GUARDRAIL_PCT}%, setara Rp${counter.toLocaleString("id-ID")}/kg.`,
+    `Stok masih menumpuk di gudang, belum perlu diskon sebesar ini.`
+  ]);
+}
+
 function makeReport(kind: "offline" | "online", repId: string, customer: Customer, daysAgo: number): Visit {
   const sku = rand(SKU_CATALOGUE).sku;
   const outcomeRoll = Math.random();
@@ -136,7 +151,7 @@ function makeReport(kind: "offline" | "online", repId: string, customer: Custome
   const hour = 8 + Math.floor(Math.random() * 8);
   const timestamp = wibTimestamp(daysAgo, hour, Math.floor(Math.random() * 60));
   const listPrice = listPriceFor(sku, customer.priceTier);
-  const discountPct = outcome === "offered" ? Math.floor(Math.random() * 8) : undefined;
+  const discountPct = outcome === "offered" ? Math.floor(Math.random() * 12) : undefined;
   const quantity = outcome === "offered" ? (2 + Math.floor(Math.random() * 8)) * 250 : undefined;
 
   const requireRejection = outcome !== "offered";
@@ -148,6 +163,12 @@ function makeReport(kind: "offline" | "online", repId: string, customer: Custome
 
   const ghostFlag = kind === "offline" && Math.random() < 0.06;
   const nextAction = rand(NEXT_ACTIONS);
+
+  // Price approval gate: only kicks in above the guardrail, matching the live app's own rule.
+  const needsApproval = outcome === "offered" && (discountPct ?? 0) > DISCOUNT_GUARDRAIL_PCT;
+  const decisionRoll = Math.random();
+  const approvalStatus = needsApproval ? (decisionRoll < 0.4 ? "pending" : decisionRoll < 0.75 ? "approved" : "rejected") : undefined;
+  const decidedAt = approvalStatus && approvalStatus !== "pending" ? wibTimestamp(Math.max(0, daysAgo - 1), 9 + Math.floor(Math.random() * 7), Math.floor(Math.random() * 60)) : undefined;
 
   return {
     id: genId("visit"),
@@ -171,7 +192,11 @@ function makeReport(kind: "offline" | "online", repId: string, customer: Custome
     meetingConclusion: rand(outcome === "offered" ? CONCLUSIONS_OFFERED : CONCLUSIONS_NOT_OFFERED),
     nextAction,
     followUpDate: nextAction ? wibDateKey(-1 * (1 + Math.floor(Math.random() * 10))) : undefined,
-    synced: true
+    synced: true,
+    approvalStatus,
+    approvalReason: approvalStatus === "approved" ? "Sesuai guardrail regional, margin masih aman." : approvalStatus === "rejected" ? analystRejectionReason(listPrice) : undefined,
+    approvedBy: approvalStatus && approvalStatus !== "pending" ? ANALYST_ID : undefined,
+    decidedAt
   };
 }
 
@@ -205,7 +230,7 @@ export const seedOrders: Order[] = Array.from({ length: 18 }, () => {
     items: [{ sku, tons, pricePerKg }],
     deliveryTerm,
     deliveryAddress: deliveryTerm === "franco" ? customer.address : undefined,
-    locoLocation: deliveryTerm === "loco" ? rand(SAWITPRO_LOCO_LOCATIONS) : undefined,
+    locoLocation: deliveryTerm === "loco" ? rand(LOCO_LOCATIONS) : undefined,
     status
   };
 });

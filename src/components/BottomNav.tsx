@@ -39,19 +39,41 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M7 3h8l4 4v14H7z" strokeLinejoin="round" />
       <path d="M15 3v4h4M9 13h6M9 17h6" strokeLinecap="round" />
     </svg>
+  ),
+  approvals: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+    </svg>
   )
 };
 
-export default function BottomNav() {
-  const { user } = useAuth();
-  const tabs = [
+// Each role gets its own tab set instead of "rep tabs plus extras" — a Regional Manager or
+// Price Analyst has no use for a rep's daily Today/Plan screens, and a crowded 6-tab bar
+// is worse than just not listing what a role can't use.
+const TABS_BY_ROLE = {
+  rep: [
     { to: "/today", label: "Today", icon: "today" },
     { to: "/customers", label: "Customers", icon: "customers" },
     { to: "/plan", label: "Plan", icon: "plan" },
     { to: "/dashboard", label: "Dashboard", icon: "dashboard" }
     // Ordering tab hidden for now — route/page still exist, just not linked from nav.
-  ];
-  if (user?.role === "ops") tabs.push({ to: "/reports", label: "Reports", icon: "reports" });
+  ],
+  ops: [
+    { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { to: "/customers", label: "Customers", icon: "customers" },
+    { to: "/approvals", label: "Approvals", icon: "approvals" },
+    { to: "/reports", label: "Reports", icon: "reports" }
+  ],
+  analyst: [
+    { to: "/approvals", label: "Approvals", icon: "approvals" },
+    { to: "/dashboard", label: "Dashboard", icon: "dashboard" }
+  ]
+} as const;
+
+export default function BottomNav() {
+  const { user } = useAuth();
+  const tabs = TABS_BY_ROLE[user?.role ?? "rep"];
 
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex z-30">

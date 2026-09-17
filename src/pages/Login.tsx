@@ -33,7 +33,7 @@ export default function Login() {
             <path d="M4 21c1-4.5 4-7 8-7s7 2.5 8 7" strokeLinecap="round" />
           </svg>
         </div>
-        <h1 className="text-white text-2xl font-bold">SawitPRO Field Sales</h1>
+        <h1 className="text-white text-2xl font-bold">Field Sales</h1>
         <p className="text-brand-50/80 text-sm mt-1">Masuk untuk mulai hari kerja Anda</p>
       </div>
 
@@ -56,7 +56,7 @@ export default function Login() {
               Kirim Kode OTP
             </Button>
             <p className="text-xs text-gray-400 mt-4 leading-relaxed">
-              Demo: rep — 081234500001 / 081234500002 / 081234500003. Ops manager — 081234599999.
+              Demo: rep — 081234500001 / 081234500002 / 081234500003. Regional manager — 081234599999. Price analyst — 081234577777.
             </p>
           </form>
         ) : (

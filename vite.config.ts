@@ -12,8 +12,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "SawitPRO Field Sales",
-        short_name: "SawitPRO",
+        name: "Field Sales",
+        short_name: "Field Sales",
         description: "Field sales visit, customer, and price intelligence app",
         theme_color: "#1b7a3d",
         background_color: "#f4f7f2",

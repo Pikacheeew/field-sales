@@ -1,4 +1,4 @@
-export type Role = "rep" | "ops";
+export type Role = "rep" | "ops" | "analyst";
 
 export interface User {
   id: string;
@@ -18,7 +18,7 @@ export interface Customer {
   kabupaten: string;
   kecamatan: string;
   tier: Tier; // GMV-based value segment (A/B/C) — separate from priceTier below
-  priceTier: PriceTier; // which SawitPRO price list this customer buys on
+  priceTier: PriceTier; // which price list this customer buys on
   customerType: CustomerType; // new prospect vs an already-established customer
   assignedRepId: string;
   phone: string;
@@ -76,7 +76,19 @@ export interface Visit {
   // Immutable-with-audit-trail per PRD: an edit snapshots the pre-edit record here rather
   // than overwriting it silently.
   history?: VisitHistoryEntry[];
+  // Price approval gate: set only when discountPct exceeds DISCOUNT_GUARDRAIL_PCT.
+  // A quote within the guardrail never touches these fields — it's implicitly fine.
+  approvalStatus?: ApprovalStatus;
+  approvalReason?: string; // the analyst's reason — required on rejection, often a counter-price
+  approvedBy?: string;
+  decidedAt?: string;
 }
+
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
+// A Sales Executive can quote up to this much off list price on their own; anything steeper
+// routes to the Price Analyst queue before it counts as a final offered price.
+export const DISCOUNT_GUARDRAIL_PCT = 5;
 
 export interface VisitHistoryEntry {
   editedAt: string;
@@ -101,7 +113,7 @@ export interface Order {
   items: OrderItem[];
   deliveryTerm: DeliveryTerm;
   deliveryAddress?: string; // franco: delivered to this address
-  locoLocation?: string; // loco: picked up from this SawitPRO location
+  locoLocation?: string; // loco: picked up from this warehouse location
   status: OrderStatus;
 }
 
@@ -130,7 +142,7 @@ export interface PlanEntry {
   done: boolean;
 }
 
-// Rp/kg, derived from real 50kg-bag prices on toko.sawitpro.id (checked 2026-09-17).
+// Rp/kg, derived from real 50kg-bag fertilizer prices (checked 2026-09-17).
 export const SKU_CATALOGUE = [
   { sku: "MOP/KCL Canada Cap Mahkota", price: { Retail: 8640, Grosir: 8280, "Khusus Petani": 8256 } },
   { sku: "NPK Mahkota 13-8-27-4", price: { Retail: 11130, Grosir: 10868, "Khusus Petani": 10836 } },
@@ -162,12 +174,12 @@ export function pricePerKgForTons(sku: string, priceTier: PriceTier, tons: numbe
   return Math.round(basePricePerKg * factor);
 }
 
-// Mock "SawitPRO database" of pickup warehouses for loco (buyer picks up) orders.
-export const SAWITPRO_LOCO_LOCATIONS = [
-  "Gudang SawitPRO Pekanbaru",
-  "Gudang SawitPRO Dumai",
-  "Gudang SawitPRO Bangkinang",
-  "Gudang SawitPRO Duri"
+// Mock database of pickup warehouses for loco (buyer picks up) orders.
+export const LOCO_LOCATIONS = [
+  "Gudang Pekanbaru",
+  "Gudang Dumai",
+  "Gudang Bangkinang",
+  "Gudang Duri"
 ];
 
 export function orderItemTotal(item: OrderItem): number {
@@ -178,21 +190,25 @@ export function orderTotal(items: OrderItem[]): number {
   return items.reduce((sum, it) => sum + orderItemTotal(it), 0);
 }
 
+// Aligned to the actual most-common reasons logged in the field (real lost-opportunity data),
+// not a generic textbook taxonomy.
 export const EXTERNAL_REASONS = [
   "Harga terlalu tinggi",
-  "Pilih kompetitor",
-  "Belum tertarik siklus ini",
-  "Masalah kredit",
-  "Timing",
+  "Metode pembayaran (DP 50%)",
+  "SLA pengiriman 14 hari",
+  "Sudah order di tempat lain",
+  "Pemilik toko tidak di tempat",
+  "Masih ada stok di gudang pelanggan",
   "Lainnya"
 ];
 
 export const INTERNAL_REASONS = [
   "Stok habis",
-  "Pengiriman terlambat",
+  "SKU kurang lengkap",
+  "Order sebelumnya belum fulfill",
   "Approval harga tertunda",
+  "Denda telat pick-up order",
   "Komplain kualitas produk",
-  "Masalah admin",
   "Lainnya"
 ];
 

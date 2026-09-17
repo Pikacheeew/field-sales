@@ -1,9 +1,59 @@
 import { db } from "./store";
+import { orderTotal } from "./types";
 import type { Visit } from "./types";
 
 export function filterVisits(repId: string | "all") {
   const visits = db.visits();
   return repId === "all" ? visits : visits.filter((v) => v.repId === repId);
+}
+
+// Mission-tracker style target vs. actual per rep — same shape as the daily/weekly rollup
+// used for real field-ops reporting: visit compliance and GMV against a flat per-rep target.
+// ponytail: one flat target for every rep, not a per-region target table — add one if targets
+// ever need to vary by rep/region.
+export const VISIT_TARGET_PER_DAY = 5;
+// Calibrated against this app's own bulk-order pricing (10-40 ton orders at real per-kg
+// prices run into the hundreds of millions fast) — not a real regional target.
+export const GMV_TARGET_PER_WEEK = 400_000_000;
+
+export interface RepMissionRow {
+  repId: string;
+  repName: string;
+  visitsActual: number;
+  visitsTarget: number;
+  visitAchievementPct: number;
+  gmvActual: number;
+  gmvTarget: number;
+  gmvAchievementPct: number;
+}
+
+export function missionTracker(period: "today" | "week"): RepMissionRow[] {
+  const reps = db.users().filter((u) => u.role === "rep");
+  const cutoff = period === "today" ? new Date().setHours(0, 0, 0, 0) : Date.now() - 7 * 86400000;
+  const workdays = period === "today" ? 1 : 6; // Mon-Sat, matching the real tracker's weekday+Saturday targets
+
+  return reps.map((rep) => {
+    const visitsActual = db
+      .visitsForRep(rep.id)
+      .filter((v) => v.kind === "offline" && new Date(v.timestamp).getTime() >= cutoff).length;
+    const gmvActual = db
+      .orders()
+      .filter((o) => o.repId === rep.id && new Date(o.timestamp).getTime() >= cutoff)
+      .reduce((sum, o) => sum + orderTotal(o.items), 0);
+    const visitsTarget = VISIT_TARGET_PER_DAY * workdays;
+    const gmvTarget = period === "today" ? Math.round(GMV_TARGET_PER_WEEK / 6) : GMV_TARGET_PER_WEEK;
+
+    return {
+      repId: rep.id,
+      repName: rep.name,
+      visitsActual,
+      visitsTarget,
+      visitAchievementPct: visitsTarget ? Math.round((visitsActual / visitsTarget) * 100) : 0,
+      gmvActual,
+      gmvTarget,
+      gmvAchievementPct: gmvTarget ? Math.round((gmvActual / gmvTarget) * 100) : 0
+    };
+  });
 }
 
 // Offline visits and online engagements now share one report format (SKU, outcome, rejection),
