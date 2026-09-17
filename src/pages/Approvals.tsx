@@ -8,7 +8,7 @@ import { Button, Card, Chip, PageHeader, Textarea } from "../components/ui";
 // The Price Analyst's queue: requests waiting on a decision, and the full history of past
 // decisions with their reasons — "so we can know and learn of why" a price was rejected.
 export default function Approvals() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [tab, setTab] = useState<"pending" | "history">("pending");
   const [tick, setTick] = useState(0);
 
@@ -23,6 +23,11 @@ export default function Approvals() {
       <PageHeader
         title="Persetujuan Harga"
         subtitle={`Batas diskon rep: ${DISCOUNT_GUARDRAIL_PCT}% dari harga list`}
+        right={
+          <button onClick={logout} className="tap-target text-xs font-medium text-gray-400">
+            Keluar
+          </button>
+        }
       />
       <div className="px-4 space-y-3">
         <div className="flex gap-2">
@@ -117,6 +122,13 @@ function RequestCard({
         <span className="font-semibold text-gray-800">Diminta: {formatRupiah(visit.priceQuoted ?? 0)}/kg</span>
       </div>
       {visit.quantity !== undefined && <div className="text-xs text-gray-500 mt-0.5">Jumlah: {visit.quantity} kg</div>}
+      {visit.photos && visit.photos.length > 0 && (
+        <div className="flex gap-1.5 mt-2">
+          {visit.photos.map((p, i) => (
+            <img key={i} src={p} alt="Bukti dari rep" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+          ))}
+        </div>
+      )}
 
       {canDecide && (
         <div className="mt-3 pt-3 border-t border-gray-100">
@@ -172,6 +184,13 @@ function HistoryCard({ visit }: { visit: Visit }) {
       <div className="mt-2 text-sm text-gray-700">
         {visit.skus?.[0]} · {visit.discountPct}% diskon · {formatRupiah(visit.priceQuoted ?? 0)}/kg
       </div>
+      {visit.photos && visit.photos.length > 0 && (
+        <div className="flex gap-1.5 mt-2">
+          {visit.photos.map((p, i) => (
+            <img key={i} src={p} alt="Bukti dari rep" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+          ))}
+        </div>
+      )}
       {visit.approvalReason && (
         <div className={`text-xs mt-1.5 rounded-lg px-2.5 py-1.5 ${approved ? "bg-brand-50 text-brand-700" : "bg-red-50 text-red-600"}`}>
           {visit.approvalReason}
