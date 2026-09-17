@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import Ordering from "./pages/Ordering";
 import Approvals from "./pages/Approvals";
+import MissionReport from "./pages/MissionReport";
 
 function RepShell() {
   const { user } = useAuth();
@@ -45,6 +46,18 @@ export default function App() {
       <Routes>
         <Route path="/order" element={<Ordering />} />
         <Route path="/order/:customerId" element={<Ordering />} />
+      </Routes>
+    );
+  }
+
+  // Desktop report is a companion view, not part of the mobile bottom-nav shell — still
+  // requires login, just skips RepShell's phone-width frame and BottomNav. A distinct path
+  // (not "/report") avoids colliding with "/reports" via startsWith.
+  if (location.pathname.startsWith("/mission-report")) {
+    if (!user) return <Login />;
+    return (
+      <Routes>
+        <Route path="/mission-report" element={<MissionReport />} />
       </Routes>
     );
   }

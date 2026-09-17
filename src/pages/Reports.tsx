@@ -95,6 +95,16 @@ export default function Reports() {
   return (
     <div>
       <PageHeader title="Laporan & Export" subtitle="Unduh data untuk analisis lanjutan" />
+      <div className="px-4 mb-3">
+        <a
+          href="#/mission-report"
+          target="_blank"
+          rel="noreferrer"
+          className="block text-center text-sm font-medium text-brand-600 bg-brand-50 rounded-xl py-2.5 tap-target"
+        >
+          Buka Laporan Versi Desktop ↗
+        </a>
+      </div>
       <div className="px-4 space-y-3">
         <div>
           <div className="flex items-center justify-between mb-2">

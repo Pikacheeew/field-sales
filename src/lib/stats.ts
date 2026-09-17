@@ -37,13 +37,45 @@ export interface RepMissionRow {
   gmvAchievementPct: number;
 }
 
-export function missionTracker(period: "today" | "week"): RepMissionRow[] {
+// Mon-Sat days elapsed from the 1st of the month through `asOf` (inclusive) — used to scale
+// the Monthly view to days-loaded-so-far instead of a fixed full-month number, same as the
+// real tracker's MTD behavior.
+function elapsedWorkdaysInMonth(asOf: Date): { weekdays: number; saturdays: number } {
+  let weekdays = 0;
+  let saturdays = 0;
+  const d = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
+  while (d <= asOf) {
+    const day = d.getDay();
+    if (day === 6) saturdays += 1;
+    else if (day !== 0) weekdays += 1;
+    d.setDate(d.getDate() + 1);
+  }
+  return { weekdays, saturdays };
+}
+
+export function missionTracker(period: "today" | "week" | "month"): RepMissionRow[] {
   const reps = db.users().filter((u) => u.role === "rep");
-  const cutoff = period === "today" ? new Date().setHours(0, 0, 0, 0) : Date.now() - 7 * 86400000;
-  // Weekly target sums each Mon-Sat day's actual target (5 weekday + 3 Saturday = 28/week),
-  // not a flat daily rate times 6 — matches how the real sheet's weekday/Saturday split works.
-  const visitsTargetForPeriod =
-    period === "today" ? visitTargetForDay(new Date().getDay()) : VISIT_TARGET_WEEKDAY * 5 + VISIT_TARGET_SATURDAY;
+  const now = new Date();
+  let cutoff: number;
+  let visitsTargetForPeriod: number;
+  let workdaysForGmv: number; // number of daily-rate units the GMV target is scaled by
+
+  if (period === "today") {
+    cutoff = new Date().setHours(0, 0, 0, 0);
+    visitsTargetForPeriod = visitTargetForDay(now.getDay());
+    workdaysForGmv = 1;
+  } else if (period === "week") {
+    cutoff = Date.now() - 7 * 86400000;
+    // Sums each Mon-Sat day's actual target (5 weekday + 3 Saturday = 28/week), not a flat
+    // daily rate times 6 — matches how the real sheet's weekday/Saturday split works.
+    visitsTargetForPeriod = VISIT_TARGET_WEEKDAY * 5 + VISIT_TARGET_SATURDAY;
+    workdaysForGmv = 6;
+  } else {
+    cutoff = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const { weekdays, saturdays } = elapsedWorkdaysInMonth(now);
+    visitsTargetForPeriod = weekdays * VISIT_TARGET_WEEKDAY + saturdays * VISIT_TARGET_SATURDAY;
+    workdaysForGmv = weekdays + saturdays;
+  }
 
   return reps.map((rep) => {
     const visitsActual = db
@@ -55,7 +87,7 @@ export function missionTracker(period: "today" | "week"): RepMissionRow[] {
       .reduce((sum, o) => sum + orderTotal(o.items), 0);
     const gmvTargetPerWeek = REP_GMV_TARGET_PER_WEEK[rep.id] ?? DEFAULT_GMV_TARGET_PER_WEEK;
     const visitsTarget = visitsTargetForPeriod;
-    const gmvTarget = period === "today" ? Math.round(gmvTargetPerWeek / 6) : gmvTargetPerWeek;
+    const gmvTarget = Math.round((gmvTargetPerWeek / 6) * workdaysForGmv);
 
     return {
       repId: rep.id,
@@ -68,6 +100,48 @@ export function missionTracker(period: "today" | "week"): RepMissionRow[] {
       gmvAchievementPct: gmvTarget ? Math.round((gmvActual / gmvTarget) * 100) : 0
     };
   });
+}
+
+export interface MissionComparisonRow {
+  label: string;
+  visitsActual: number;
+  visitsTarget: number;
+  gmvActual: number;
+  gmvTarget: number;
+  achievementPct: number;
+}
+
+// Whole-team trend, not per-rep — this week vs. last week, so the desktop report can show a
+// delta the same way the real tracker's Comparison tab does.
+export function weekOverWeekComparison(): [MissionComparisonRow, MissionComparisonRow] {
+  const reps = db.users().filter((u) => u.role === "rep");
+  const visitsTargetPerRep = VISIT_TARGET_WEEKDAY * 5 + VISIT_TARGET_SATURDAY;
+  const visitsTargetTotal = visitsTargetPerRep * reps.length;
+  const gmvTargetTotal = reps.reduce((sum, r) => sum + (REP_GMV_TARGET_PER_WEEK[r.id] ?? DEFAULT_GMV_TARGET_PER_WEEK), 0);
+
+  function rowFor(daysAgoStart: number, daysAgoEnd: number, label: string): MissionComparisonRow {
+    const start = Date.now() - daysAgoStart * 86400000;
+    const end = Date.now() - daysAgoEnd * 86400000;
+    const visitsActual = db
+      .visits()
+      .filter((v) => v.kind === "offline" && new Date(v.timestamp).getTime() >= start && new Date(v.timestamp).getTime() < end).length;
+    const gmvActual = db
+      .orders()
+      .filter((o) => new Date(o.timestamp).getTime() >= start && new Date(o.timestamp).getTime() < end)
+      .reduce((sum, o) => sum + orderTotal(o.items), 0);
+    const visitPct = visitsTargetTotal ? (visitsActual / visitsTargetTotal) * 100 : 0;
+    const gmvPct = gmvTargetTotal ? (gmvActual / gmvTargetTotal) * 100 : 0;
+    return {
+      label,
+      visitsActual,
+      visitsTarget: visitsTargetTotal,
+      gmvActual,
+      gmvTarget: gmvTargetTotal,
+      achievementPct: Math.round((visitPct + gmvPct) / 2)
+    };
+  }
+
+  return [rowFor(14, 7, "Minggu Lalu"), rowFor(7, 0, "Minggu Ini")];
 }
 
 // Offline visits and online engagements now share one report format (SKU, outcome, rejection),

@@ -1,0 +1,297 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+.mission-report {
+  --bg: #f4f6f4;
+  --surface: #ffffff;
+  --surface-2: #eef1ee;
+  --ink: #171f1b;
+  --muted: #5b665f;
+  --border: #dde3dd;
+  --accent: #2f6b4f;
+  --accent-ink: #173d2b;
+  --accent-soft: #e3ede7;
+  --good: #1a7431;
+  --good-soft: #dff5e1;
+  --bad: #b3261e;
+  --bad-soft: #fde2e1;
+  --warn: #8a5a12;
+  --warn-soft: #f5e6cd;
+  --shadow: 0 1px 2px rgba(20, 30, 24, 0.04), 0 8px 24px rgba(20, 30, 24, 0.05);
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+.mission-report * {
+  box-sizing: border-box;
+}
+
+.mission-report .wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+.mission-report h1,
+.mission-report h2,
+.mission-report h3 {
+  font-family: "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.mission-report h1 {
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 800;
+}
+
+.mission-report h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mission-report p {
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+.mission-report .muted {
+  color: var(--muted);
+}
+
+.mission-report code,
+.mission-report .mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.mission-report header.doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 28px;
+}
+
+.mission-report .doc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mission-report .eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+.mission-report .meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mission-report .meta-row b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mission-report .logout-btn {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mission-report .logout-btn:hover {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.mission-report nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.mission-report nav.tabs button {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.mission-report nav.tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.mission-report section {
+  margin-bottom: 40px;
+}
+
+.mission-report .sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mission-report .grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mission-report .grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.mission-report .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+
+.mission-report .card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mission-report .card .stat {
+  font-family: "Archivo", sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.mission-report .card p {
+  margin-bottom: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mission-report .callout {
+  border-radius: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  margin: 14px 0;
+  font-size: 13.5px;
+}
+
+.mission-report .callout .tag {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+  color: var(--warn);
+}
+
+.mission-report .callout.warn {
+  background: var(--warn-soft);
+}
+
+.mission-report .table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.mission-report table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mission-report th,
+.mission-report td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.mission-report tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mission-report th {
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.mission-report .pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.mission-report .delta {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+}
+
+.mission-report .delta.up {
+  color: var(--good);
+}
+
+.mission-report .delta.down {
+  color: var(--bad);
+}
+
+.mission-report footer {
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .mission-report .grid-2,
+  .mission-report .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
