@@ -1,0 +1,134 @@
+import { useState } from "react";
+import { useAuth } from "../lib/auth";
+import { useGeo } from "../lib/useGeo";
+import { db, id } from "../lib/store";
+import { formatRupiah } from "../lib/format";
+import { PRICE_TIERS, SKU_CATALOGUE, type PriceSource, type PriceType } from "../lib/types";
+import { Button, Field, Input, Select, Textarea } from "./ui";
+
+// Our own price list, for reference while a rep is entering a competitor's price.
+export function PriceListReference() {
+  return (
+    <div className="mb-4 overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="text-left text-gray-400">
+            <th className="font-medium pb-1 pr-2">SKU</th>
+            {PRICE_TIERS.map((t) => (
+              <th key={t} className="font-medium pb-1 px-1 text-right whitespace-nowrap">
+                {t}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SKU_CATALOGUE.map((s) => (
+            <tr key={s.sku} className="border-t border-gray-100">
+              <td className="py-1.5 pr-2 text-gray-700">{s.sku}</td>
+              {PRICE_TIERS.map((t) => (
+                <td key={t} className="py-1.5 px-1 text-right text-gray-600 whitespace-nowrap">
+                  {formatRupiah(s.price[t])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[11px] text-gray-400 mt-1">Harga list SawitPRO (Rp/kg) — untuk pembanding.</p>
+    </div>
+  );
+}
+
+export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
+  const { user } = useAuth();
+  const geo = useGeo();
+  const [saved, setSaved] = useState(false);
+
+  const [competitor, setCompetitor] = useState("");
+  const [skus, setSkus] = useState<string[]>([]);
+  const [price, setPrice] = useState("");
+  const [priceType, setPriceType] = useState<PriceType>("do_price");
+  const [source, setSource] = useState<PriceSource>("direct");
+  const [notes, setNotes] = useState("");
+
+  function toggleSku(s: string) {
+    setSkus((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  }
+
+  async function submit() {
+    if (!user) return;
+    const coords = await geo.capture();
+    db.addPriceIntel({
+      id: id("pi"),
+      repId: user.id,
+      timestamp: new Date().toISOString(),
+      gps: coords,
+      competitorName: competitor || "Tidak disebutkan",
+      skus,
+      competitorPrice: Number(price) || 0,
+      priceType,
+      source,
+      notes
+    });
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      setCompetitor("");
+      setSkus([]);
+      setPrice("");
+      setNotes("");
+      onSaved();
+    }, 900);
+  }
+
+  if (saved) return <div className="py-10 text-center text-brand-600 font-semibold">Tersimpan ✓</div>;
+
+  return (
+    <>
+      <PriceListReference />
+      <Field label="Nama Kompetitor">
+        <Input value={competitor} onChange={(e) => setCompetitor(e.target.value)} placeholder="cth. Petro Sejahtera" />
+      </Field>
+      <Field label="SKU" required>
+        <div className="flex flex-wrap gap-2">
+          {SKU_CATALOGUE.map((s) => (
+            <button
+              key={s.sku}
+              type="button"
+              onClick={() => toggleSku(s.sku)}
+              className={`tap-target rounded-full px-3 text-sm border ${
+                skus.includes(s.sku) ? "bg-brand-500 text-white border-brand-500" : "border-gray-300 text-gray-600"
+              }`}
+            >
+              {s.sku}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Field label="Harga Kompetitor (Rp/kg)" required>
+        <Input type="number" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" />
+      </Field>
+      <Field label="Jenis Harga">
+        <Select value={priceType} onChange={(e) => setPriceType(e.target.value as PriceType)}>
+          <option value="do_price">Harga DO</option>
+          <option value="retail_price">Harga Retail</option>
+          <option value="special_deal">Special Deal</option>
+        </Select>
+      </Field>
+      <Field label="Sumber">
+        <Select value={source} onChange={(e) => setSource(e.target.value as PriceSource)}>
+          <option value="direct">Observasi langsung</option>
+          <option value="customer_told">Info dari pelanggan</option>
+          <option value="distributor_told">Info dari distributor</option>
+        </Select>
+      </Field>
+      <Field label="Catatan">
+        <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </Field>
+      <p className="text-xs text-gray-400 mb-3">Lokasi GPS &amp; waktu diambil otomatis saat submit.</p>
+      <Button className="w-full" onClick={submit} disabled={!price || skus.length === 0}>
+        Simpan Info Harga
+      </Button>
+    </>
+  );
+}

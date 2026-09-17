@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: #f4f7f2;
+  color: #16241a;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+/* min 44px tap targets per PRD */
+.tap-target {
+  min-height: 44px;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes slideup {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
