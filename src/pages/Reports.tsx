@@ -144,7 +144,8 @@ export default function Reports() {
             </table>
           </Card>
           <p className="text-[11px] text-gray-400 mt-1.5">
-            Target: {period === "today" ? "5 kunjungan/hari" : "30 kunjungan/minggu"} · GMV flat per rep — ganti dengan target per wilayah bila tersedia.
+            Target kunjungan: {mission[0]?.visitsTarget ?? "-"}
+            {period === "today" ? "/hari (5 weekday, 3 Sabtu, libur Minggu)" : "/minggu (5×weekday + 3×Sabtu)"} · Target GMV bervariasi per rep.
           </p>
         </div>
 

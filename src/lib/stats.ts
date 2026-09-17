@@ -7,14 +7,24 @@ export function filterVisits(repId: string | "all") {
   return repId === "all" ? visits : visits.filter((v) => v.repId === repId);
 }
 
-// Mission-tracker style target vs. actual per rep — same shape as the daily/weekly rollup
-// used for real field-ops reporting: visit compliance and GMV against a flat per-rep target.
-// ponytail: one flat target for every rep, not a per-region target table — add one if targets
-// ever need to vary by rep/region.
-export const VISIT_TARGET_PER_DAY = 5;
-// Calibrated against this app's own bulk-order pricing (10-40 ton orders at real per-kg
-// prices run into the hundreds of millions fast) — not a real regional target.
-export const GMV_TARGET_PER_WEEK = 400_000_000;
+// Mission-tracker style target vs. actual per rep — mirrors the real targets.csv logic:
+// a flat weekday/Saturday visit target for everyone, plus a per-rep GMV target (real sheet
+// varies this by region/book size via classA+psp+agrochem_gmv_tgt summed per pic).
+export const VISIT_TARGET_WEEKDAY = 5;
+export const VISIT_TARGET_SATURDAY = 3;
+// No Sunday target in the real sheet either — offline visit group runs Mon-Sat.
+function visitTargetForDay(day: number): number {
+  return day === 0 ? 0 : day === 6 ? VISIT_TARGET_SATURDAY : VISIT_TARGET_WEEKDAY;
+}
+
+// Per-rep GMV target, varied like the real per-pic target column — calibrated to this app's
+// own bulk-order pricing (10-40 ton orders run into the hundreds of millions), not real figures.
+const REP_GMV_TARGET_PER_WEEK: Record<string, number> = {
+  rep_budi: 350_000_000,
+  rep_siti: 500_000_000,
+  rep_hendra: 450_000_000
+};
+const DEFAULT_GMV_TARGET_PER_WEEK = 400_000_000;
 
 export interface RepMissionRow {
   repId: string;
@@ -30,7 +40,10 @@ export interface RepMissionRow {
 export function missionTracker(period: "today" | "week"): RepMissionRow[] {
   const reps = db.users().filter((u) => u.role === "rep");
   const cutoff = period === "today" ? new Date().setHours(0, 0, 0, 0) : Date.now() - 7 * 86400000;
-  const workdays = period === "today" ? 1 : 6; // Mon-Sat, matching the real tracker's weekday+Saturday targets
+  // Weekly target sums each Mon-Sat day's actual target (5 weekday + 3 Saturday = 28/week),
+  // not a flat daily rate times 6 — matches how the real sheet's weekday/Saturday split works.
+  const visitsTargetForPeriod =
+    period === "today" ? visitTargetForDay(new Date().getDay()) : VISIT_TARGET_WEEKDAY * 5 + VISIT_TARGET_SATURDAY;
 
   return reps.map((rep) => {
     const visitsActual = db
@@ -40,8 +53,9 @@ export function missionTracker(period: "today" | "week"): RepMissionRow[] {
       .orders()
       .filter((o) => o.repId === rep.id && new Date(o.timestamp).getTime() >= cutoff)
       .reduce((sum, o) => sum + orderTotal(o.items), 0);
-    const visitsTarget = VISIT_TARGET_PER_DAY * workdays;
-    const gmvTarget = period === "today" ? Math.round(GMV_TARGET_PER_WEEK / 6) : GMV_TARGET_PER_WEEK;
+    const gmvTargetPerWeek = REP_GMV_TARGET_PER_WEEK[rep.id] ?? DEFAULT_GMV_TARGET_PER_WEEK;
+    const visitsTarget = visitsTargetForPeriod;
+    const gmvTarget = period === "today" ? Math.round(gmvTargetPerWeek / 6) : gmvTargetPerWeek;
 
     return {
       repId: rep.id,
