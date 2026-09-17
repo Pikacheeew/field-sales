@@ -9,6 +9,7 @@ export interface User {
 
 export type Tier = "A" | "B" | "C";
 export type SspTier = "Bronze" | "Silver" | "Gold" | "-";
+export type CustomerType = "new" | "existing";
 
 export interface Customer {
   id: string;
@@ -18,6 +19,7 @@ export interface Customer {
   kecamatan: string;
   tier: Tier; // GMV-based value segment (A/B/C) — separate from priceTier below
   priceTier: PriceTier; // which SawitPRO price list this customer buys on
+  customerType: CustomerType; // new prospect vs an already-established customer
   assignedRepId: string;
   phone: string;
   lat: number;
@@ -42,7 +44,7 @@ export type RejectionType = "external" | "internal";
 export type OnlineChannel = "whatsapp" | "phone" | "video" | "other";
 
 // Offline and online reports share one format (SKU, pricing, outcome, rejection, conclusion,
-// next action) — only the kind-specific bits differ: offline has purpose/GPS/photos, online has channel.
+// next action, proof photos) — only purpose+GPS (offline) vs channel (online) differ.
 export interface Visit {
   id: string;
   kind: VisitKind;
@@ -53,10 +55,10 @@ export interface Visit {
   gpsFlagged?: boolean;
   // offline-only
   purpose?: VisitPurpose;
-  photos?: string[];
   // online-only
   channel?: OnlineChannel;
   // shared
+  photos?: string[]; // proof photos, max 3, data URLs
   skus?: string[];
   outcome?: OfferingOutcome;
   listPrice?: number;

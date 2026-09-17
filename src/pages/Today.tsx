@@ -247,6 +247,8 @@ function VisitForm({
   const [conclusion, setConclusion] = useState(existing?.meetingConclusion ?? "");
   const [nextAction, setNextAction] = useState(existing?.nextAction ?? "");
   const [followUpDate, setFollowUpDate] = useState(existing?.followUpDate ?? "");
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
+  const [photoError, setPhotoError] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   // Loss/rejection capture is required whenever the report did not result in an accepted offer.
@@ -260,6 +262,22 @@ function VisitForm({
 
   function toggleReason(r: string) {
     setRejectionReasons((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
+  }
+
+  function onPhotoSelected(file: File | undefined) {
+    setPhotoError("");
+    if (!file) return;
+    if (photos.length >= 3) {
+      setPhotoError("Maksimal 3 foto per laporan.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Foto maksimal 5MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPhotos((prev) => [...prev, reader.result as string]);
+    reader.readAsDataURL(file);
   }
 
   async function submit() {
@@ -279,6 +297,7 @@ function VisitForm({
       gpsFlagged: flagged,
       purpose: kind === "offline" ? purpose : undefined,
       channel: kind === "online" ? channel : undefined,
+      photos: photos.length ? photos : undefined,
       skus: [sku],
       outcome,
       listPrice: outcome === "offered" ? listPrice : undefined,
@@ -435,6 +454,38 @@ function VisitForm({
             )}
           </Card>
         )}
+
+        <Field label={`Foto Bukti (${photos.length}/3, opsional)`}>
+          <div className="flex flex-wrap gap-2">
+            {photos.map((p, i) => (
+              <div key={i} className="relative w-16 h-16">
+                <img src={p} alt="Bukti" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+                <button
+                  type="button"
+                  onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            {photos.length < 3 && (
+              <label className="tap-target w-16 h-16 rounded-lg border border-dashed border-gray-300 text-gray-400 flex items-center justify-center cursor-pointer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                  <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => onPhotoSelected(e.target.files?.[0])}
+                />
+              </label>
+            )}
+          </div>
+          {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
+        </Field>
 
         <Field label="Kesimpulan Pertemuan">
           <Textarea rows={2} maxLength={500} value={conclusion} onChange={(e) => setConclusion(e.target.value)} />

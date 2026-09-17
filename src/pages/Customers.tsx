@@ -4,12 +4,13 @@ import { useAuth } from "../lib/auth";
 import { db, id } from "../lib/store";
 import { formatDateShort } from "../lib/format";
 import { Button, Card, Chip, Field, Input, PageHeader, Select, Sheet } from "../components/ui";
-import { PRICE_TIERS, type PriceTier, type Tier } from "../lib/types";
+import { PRICE_TIERS, type CustomerType, type PriceTier, type Tier } from "../lib/types";
 
 export default function Customers() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<Tier | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<CustomerType | "all">("all");
   const [addOpen, setAddOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
@@ -18,10 +19,11 @@ export default function Customers() {
     const q = query.trim().toLowerCase();
     return all
       .filter((c) => (tierFilter === "all" ? true : c.tier === tierFilter))
+      .filter((c) => (typeFilter === "all" ? true : c.customerType === typeFilter))
       .filter((c) => !q || c.name.toLowerCase().includes(q) || c.kecamatan.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, query, tierFilter, tick]);
+  }, [all, query, tierFilter, typeFilter, tick]);
 
   return (
     <div>
@@ -36,16 +38,29 @@ export default function Customers() {
       />
       <div className="px-4 space-y-3">
         <Input placeholder="Cari nama atau kecamatan..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto">
           {(["all", "A", "B", "C"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTierFilter(t)}
-              className={`tap-target rounded-full px-3 text-sm border ${
+              className={`tap-target rounded-full px-3 text-sm border whitespace-nowrap ${
                 tierFilter === t ? "bg-brand-500 text-white border-brand-500" : "border-gray-300 text-gray-600"
               }`}
             >
               {t === "all" ? "Semua Tier" : `Tier ${t}`}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          {(["all", "new", "existing"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`tap-target rounded-full px-3 text-sm border ${
+                typeFilter === t ? "bg-brand-500 text-white border-brand-500" : "border-gray-300 text-gray-600"
+              }`}
+            >
+              {t === "all" ? "Semua" : t === "new" ? "Pelanggan Baru" : "Pelanggan Lama"}
             </button>
           ))}
         </div>
@@ -61,7 +76,10 @@ export default function Customers() {
                       {c.kecamatan}, {c.kabupaten}
                     </div>
                   </div>
-                  <Chip tone={c.tier === "A" ? "green" : c.tier === "B" ? "amber" : "gray"}>Tier {c.tier}</Chip>
+                  <div className="flex gap-1.5">
+                    <Chip tone={c.customerType === "new" ? "amber" : "gray"}>{c.customerType === "new" ? "Baru" : "Lama"}</Chip>
+                    <Chip tone={c.tier === "A" ? "green" : c.tier === "B" ? "amber" : "gray"}>Tier {c.tier}</Chip>
+                  </div>
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-gray-400">
                   <span>Kunjungan terakhir: {c.lastVisitDate ? formatDateShort(c.lastVisitDate) : "Belum pernah"}</span>
@@ -106,6 +124,7 @@ function AddCustomerSheet({ open, onClose, onSaved }: { open: boolean; onClose: 
       kecamatan,
       tier,
       priceTier,
+      customerType: "new",
       assignedRepId: user.id,
       phone,
       lat: -0.3 + Math.random() * 0.6,

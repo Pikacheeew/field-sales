@@ -2,8 +2,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../lib/store";
 import { formatRupiah, formatRupiahCompact, formatWIB } from "../lib/format";
 import { orderTotal } from "../lib/types";
+import { skuPerformance } from "../lib/stats";
 import { Card, Chip } from "../components/ui";
 
+// "Customer 360" style: one page, dense KPI tiles + pivot-table-like breakdowns,
+// closer to an Excel dashboard than a scrolling activity feed.
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,18 +18,30 @@ export default function CustomerDetail() {
   const orders = db.orders().filter((o) => o.customerId === customer.id);
   const rep = db.userById(customer.assignedRepId);
 
+  const reported = visits.filter((v) => v.outcome);
+  const offered = reported.filter((v) => v.outcome === "offered");
+  const offeringRate = reported.length ? Math.round((offered.length / reported.length) * 100) : 0;
+  const avgDiscount = offered.length
+    ? Math.round((offered.reduce((s, v) => s + (v.discountPct ?? 0), 0) / offered.length) * 10) / 10
+    : 0;
+  const skuRows = skuPerformance(visits);
+  const lastActivity = visits[0]?.timestamp;
+
   return (
-    <div>
-      <div className="px-4 pt-12 pb-3 flex items-center gap-3">
+    <div className="pb-6">
+      <div className="px-4 pt-12 pb-1 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="tap-target px-1 text-gray-500">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-6 h-6">
             <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-gray-900">{customer.name}</h1>
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 leading-tight">{customer.name}</h1>
+          <p className="text-[11px] text-gray-400 leading-tight">Customer 360</p>
+        </div>
       </div>
 
-      <div className="px-4 space-y-3">
+      <div className="px-4 space-y-3 mt-2">
         <Card>
           <div className="flex justify-between items-start mb-2">
             <div>
@@ -35,33 +50,36 @@ export default function CustomerDetail() {
                 {customer.kecamatan}, {customer.kabupaten}
               </div>
             </div>
-            <Chip tone={customer.tier === "A" ? "green" : customer.tier === "B" ? "amber" : "gray"}>Tier {customer.tier}</Chip>
+            <div className="flex flex-col gap-1 items-end">
+              <Chip tone={customer.customerType === "new" ? "amber" : "gray"}>
+                {customer.customerType === "new" ? "Pelanggan Baru" : "Pelanggan Lama"}
+              </Chip>
+              <Chip tone={customer.tier === "A" ? "green" : customer.tier === "B" ? "amber" : "gray"}>Tier {customer.tier}</Chip>
+            </div>
           </div>
           <div className="text-sm text-gray-500">Telp: {customer.phone}</div>
           <div className="text-sm text-gray-500">Rep: {rep?.name ?? "-"}</div>
           <div className="text-sm text-gray-500">Tier Harga: {customer.priceTier}</div>
           {customer.sspTier !== "-" && (
             <div className="mt-2">
-              <Chip tone="amber">SSP {customer.sspTier} · {customer.sspPoints} poin</Chip>
+              <Chip tone="amber">
+                SSP {customer.sspTier} · {customer.sspPoints} poin
+              </Chip>
             </div>
           )}
         </Card>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="!p-3 text-center">
-            <div className="text-lg font-bold text-brand-600">{formatRupiahCompact(customer.gmv3mo)}</div>
-            <div className="text-[11px] text-gray-500 mt-1">GMV 3 Bulan</div>
-          </Card>
-          <Card className="!p-3 text-center">
-            <div className="text-lg font-bold text-brand-600">
-              {customer.visitFrequencyActual}/{customer.visitFrequencyPlanned}
-            </div>
-            <div className="text-[11px] text-gray-500 mt-1">Frek. Kunjungan</div>
-          </Card>
-          <Card className="!p-3 text-center">
-            <div className="text-lg font-bold text-brand-600">{orders.length}</div>
-            <div className="text-[11px] text-gray-500 mt-1">Total Order</div>
-          </Card>
+        {/* KPI scorecard */}
+        <div className="grid grid-cols-3 gap-2">
+          <Kpi label="GMV 3 Bulan" value={formatRupiahCompact(customer.gmv3mo)} />
+          <Kpi label="Total Order" value={String(orders.length)} />
+          <Kpi
+            label="Frek. Kunjungan"
+            value={`${customer.visitFrequencyActual}/${customer.visitFrequencyPlanned}`}
+          />
+          <Kpi label="Offering Rate" value={`${offeringRate}%`} tone={offeringRate >= 50 ? "brand" : "amber"} />
+          <Kpi label="Avg. Diskon" value={`${avgDiscount}%`} tone={avgDiscount > 5 ? "amber" : "brand"} />
+          <Kpi label="Aktivitas Terakhir" value={lastActivity ? formatWIB(lastActivity).split(" — ")[0] : "-"} small />
         </div>
 
         {customer.openNotes && (
@@ -70,6 +88,39 @@ export default function CustomerDetail() {
             <div className="text-sm text-gray-700">{customer.openNotes}</div>
           </Card>
         )}
+
+        {/* SKU pivot breakdown */}
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-2">Performa per SKU</h3>
+          {skuRows.length === 0 ? (
+            <Card className="text-center text-gray-400 text-sm py-6">Belum ada data SKU.</Card>
+          ) : (
+            <Card className="!p-0 overflow-hidden">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-gray-500">
+                    <th className="font-medium py-2 pl-3 pr-2">SKU</th>
+                    <th className="font-medium py-2 px-2 text-right">Dibahas</th>
+                    <th className="font-medium py-2 px-2 text-right">Offering</th>
+                    <th className="font-medium py-2 pr-3 pl-2 text-right">Avg Harga</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {skuRows.map((r) => (
+                    <tr key={r.sku} className="border-t border-gray-100">
+                      <td className="py-2 pl-3 pr-2 text-gray-700">{r.sku}</td>
+                      <td className="py-2 px-2 text-right text-gray-600">{r.discussed}x</td>
+                      <td className="py-2 px-2 text-right text-gray-600">{r.offeringRate}%</td>
+                      <td className="py-2 pr-3 pl-2 text-right text-gray-600 whitespace-nowrap">
+                        {r.avgPriceQuoted ? `${formatRupiah(r.avgPriceQuoted)}/kg` : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </div>
 
         <div>
           <h3 className="font-semibold text-gray-800 mb-2">Riwayat Kunjungan</h3>
@@ -87,6 +138,13 @@ export default function CustomerDetail() {
                   {v.priceQuoted !== undefined && (
                     <div className="text-xs text-gray-500 mt-0.5">Harga: {formatRupiah(v.priceQuoted)} / kg</div>
                   )}
+                  {v.photos && v.photos.length > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {v.photos.map((p, i) => (
+                        <img key={i} src={p} alt="Bukti" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                      ))}
+                    </div>
+                  )}
                   {v.meetingConclusion && <div className="text-sm text-gray-600 mt-1">{v.meetingConclusion}</div>}
                   {v.rejectionType && (
                     <div className="text-xs text-red-500 mt-1">
@@ -99,7 +157,7 @@ export default function CustomerDetail() {
           )}
         </div>
 
-        <div className="pb-4">
+        <div>
           <h3 className="font-semibold text-gray-800 mb-2">Riwayat Order</h3>
           {orders.length === 0 ? (
             <Card className="text-center text-gray-400 text-sm py-6">Belum ada order.</Card>
@@ -111,9 +169,7 @@ export default function CustomerDetail() {
                     <div className="text-sm font-medium text-gray-900">{formatWIB(o.timestamp)}</div>
                     <Chip tone={o.status === "confirmed" ? "green" : o.status === "cancelled" ? "red" : "amber"}>{o.status}</Chip>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {o.items.map((it) => `${it.sku} ${it.tons}ton`).join(", ")}
-                  </div>
+                  <div className="text-xs text-gray-500 mt-1">{o.items.map((it) => `${it.sku} ${it.tons}ton`).join(", ")}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
                     {o.deliveryTerm === "franco" ? `Franco — ${o.deliveryAddress}` : `Loco — ${o.locoLocation}`}
                   </div>
@@ -125,5 +181,16 @@ export default function CustomerDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Kpi({ label, value, tone = "brand", small = false }: { label: string; value: string; tone?: "brand" | "amber"; small?: boolean }) {
+  return (
+    <Card className="!p-2.5 text-center">
+      <div className={`${small ? "text-xs" : "text-base"} font-bold ${tone === "brand" ? "text-brand-600" : "text-amber-600"}`}>
+        {value}
+      </div>
+      <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{label}</div>
+    </Card>
   );
 }

@@ -39,6 +39,8 @@ export function PriceListReference() {
   );
 }
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // matches the 5MB/photo cap used for visit photos in the PRD
+
 export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
   const { user } = useAuth();
   const geo = useGeo();
@@ -50,9 +52,23 @@ export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
   const [priceType, setPriceType] = useState<PriceType>("do_price");
   const [source, setSource] = useState<PriceSource>("direct");
   const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | undefined>();
+  const [photoError, setPhotoError] = useState("");
 
   function toggleSku(s: string) {
     setSkus((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  }
+
+  function onPhotoSelected(file: File | undefined) {
+    setPhotoError("");
+    if (!file) return;
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("Foto maksimal 5MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(reader.result as string);
+    reader.readAsDataURL(file);
   }
 
   async function submit() {
@@ -68,6 +84,7 @@ export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
       competitorPrice: Number(price) || 0,
       priceType,
       source,
+      photo,
       notes
     });
     setSaved(true);
@@ -77,6 +94,7 @@ export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
       setSkus([]);
       setPrice("");
       setNotes("");
+      setPhoto(undefined);
       onSaved();
     }, 900);
   }
@@ -121,6 +139,32 @@ export function PriceIntelForm({ onSaved }: { onSaved: () => void }) {
           <option value="customer_told">Info dari pelanggan</option>
           <option value="distributor_told">Info dari distributor</option>
         </Select>
+      </Field>
+      <Field label="Foto Bukti (opsional)">
+        {photo ? (
+          <div className="flex items-center gap-3">
+            <img src={photo} alt="Bukti harga" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+            <button type="button" className="text-sm text-red-500 tap-target px-2" onClick={() => setPhoto(undefined)}>
+              Hapus foto
+            </button>
+          </div>
+        ) : (
+          <label className="tap-target flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 text-gray-500 text-sm cursor-pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+              <path d="M4 7h3l2-2h6l2 2h3v12H4z" strokeLinejoin="round" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+            Ambil / unggah foto daftar harga
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => onPhotoSelected(e.target.files?.[0])}
+            />
+          </label>
+        )}
+        {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
       </Field>
       <Field label="Catatan">
         <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -75,11 +75,12 @@ function currentWeekMondayToSunday(): string[] {
 // Seeded customers are all resale shops/kiosks, so most buy on the wholesale (Grosir) price list.
 const PRICE_TIER_WEIGHTS: PriceTier[] = ["Grosir", "Grosir", "Grosir", "Khusus Petani", "Retail"];
 
+// "Last visit", "last order" and "new vs existing" are filled in below, once seedVisits and
+// seedOrders actually exist — deriving them from the real generated activity instead of a second,
+// independent random guess is what keeps the Customer 360 view from contradicting its own tables.
 export const seedCustomers: Customer[] = NAMES.map((name, i) => {
   const reps = REP_IDS;
   const tier = rand(["A", "B", "C"] as const);
-  const hasVisited = i % 3 !== 0;
-  const daysAgo = Math.floor(Math.random() * 20) + 1;
   return {
     id: `cust_${i + 1}`,
     name,
@@ -88,17 +89,20 @@ export const seedCustomers: Customer[] = NAMES.map((name, i) => {
     kecamatan: rand(KEC),
     tier,
     priceTier: rand(PRICE_TIER_WEIGHTS),
+    customerType: "new",
     assignedRepId: reps[i % reps.length],
     phone: `08${1000000000 + i * 137}`,
     lat: -0.3 + Math.random() * 0.6,
     lng: 101.0 + Math.random() * 0.8,
+    // 3-month rolling GMV is a broader historical rollup than the ~2-week order log seeded
+    // below, so it's kept as a tier-scaled estimate rather than derived from that shorter window.
     gmv3mo: tier === "A" ? 45000000 + Math.random() * 20000000 : tier === "B" ? 15000000 + Math.random() * 10000000 : 2000000 + Math.random() * 5000000,
-    lastVisitDate: hasVisited ? new Date(Date.now() - daysAgo * 86400000).toISOString() : null,
-    lastVisitRepId: hasVisited ? reps[i % reps.length] : null,
-    lastOrderDate: hasVisited && i % 2 === 0 ? new Date(Date.now() - daysAgo * 86400000).toISOString() : null,
-    lastOrderValue: hasVisited && i % 2 === 0 ? Math.round((3000000 + Math.random() * 8000000) / 1000) * 1000 : null,
+    lastVisitDate: null,
+    lastVisitRepId: null,
+    lastOrderDate: null,
+    lastOrderValue: null,
     visitFrequencyPlanned: 2,
-    visitFrequencyActual: hasVisited ? 1 : 0,
+    visitFrequencyActual: 0,
     openNotes: i % 4 === 0 ? "Minta follow-up harga NPK minggu depan." : "",
     sspTier: rand(["Bronze", "Silver", "Gold", "-"] as const),
     sspPoints: Math.floor(Math.random() * 5000)
@@ -204,6 +208,22 @@ export const seedOrders: Order[] = Array.from({ length: 18 }, () => {
     locoLocation: deliveryTerm === "loco" ? rand(SAWITPRO_LOCO_LOCATIONS) : undefined,
     status
   };
+});
+
+// Ground the customer summary fields in the activity actually generated above, so the
+// Customer 360 view's KPI tiles never contradict its own visit/order tables.
+seedCustomers.forEach((c) => {
+  const offlineVisits = seedVisits.filter((v) => v.customerId === c.id && v.kind === "offline");
+  const lastVisit = [...offlineVisits].sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+  c.lastVisitDate = lastVisit?.timestamp ?? null;
+  c.lastVisitRepId = lastVisit?.repId ?? null;
+  c.visitFrequencyActual = offlineVisits.filter((v) => new Date(v.timestamp).getTime() >= Date.now() - 7 * 86400000).length;
+
+  const customerOrders = seedOrders.filter((o) => o.customerId === c.id);
+  const lastOrder = [...customerOrders].sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+  c.lastOrderDate = lastOrder?.timestamp ?? null;
+  c.lastOrderValue = lastOrder ? lastOrder.items.reduce((sum, it) => sum + it.tons * 1000 * it.pricePerKg, 0) : null;
+  c.customerType = customerOrders.length > 0 ? "existing" : "new";
 });
 
 export const seedPriceIntel: PriceIntel[] = Array.from({ length: 16 }, () => {
