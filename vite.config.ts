@@ -2,8 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-// GitHub Pages serves this repo at /sawitpro-field-sales/, not the domain root.
-const BASE = "/sawitpro-field-sales/";
+// GitHub Pages serves this repo at /field-sales/, not the domain root.
+const BASE = "/field-sales/";
 
 export default defineConfig({
   base: BASE,
